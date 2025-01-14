@@ -17,6 +17,7 @@ maintainers = [
 
 dependencies = [
     "numpy",
+    "pyyaml",
     "types-PyYAML",
 ]
 
