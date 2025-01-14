@@ -3,6 +3,8 @@
 
 This repo is based on the [refractiveindex repo](https://github.com/toftul/refractiveindex) by [Ivan Toftul](https://github.com/toftul), which itself is based on the `refractiveindex.py` module from the [PyTMM project](https://github.com/kitchenknif/PyTMM) by [Pavel Dmitriev](https://github.com/kitchenknif). It provides a python interface to the [refractiveindex.info database](https://github.com/polyanskiy/refractiveindex.info-database) by [Mikhail Polyanskiy](https://github.com/polyanskiy).
 
+Compared to other interfaces to the database, `refractiveindex2` implements additional formulas required by some materials in the database and is rewritten to have a simpler class structure. It also includes extensive tests for all materials in the database.
+
 
 ## Installation
 
