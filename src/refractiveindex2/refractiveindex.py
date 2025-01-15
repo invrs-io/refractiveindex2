@@ -77,7 +77,7 @@ def _parse_catalog(
     return parsed
 
 
-# On module import, the databse is automatically downloaded and parsed.
+# On module import, the database is automatically downloaded and parsed.
 
 if not os.path.exists(_DATABASE_PATH):
     _download_database(url=_DATABASE_URL, path=_DATABASE_PATH)
@@ -223,7 +223,7 @@ def _load_tabulated_nk_fns(
 def _load_tabulated_fn(
     data: Dict[str, str],
 ) -> Tuple[Callable[[Array], Array], Tuple[float, float]]:
-    """Return functions for tabulated data including n only."""
+    """Return functions for tabulated data including e.g. n or k only."""
     data_wavelength_um, data_points = _parse_tabulated(data["data"])
     data_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_points)
     wvl_lo = float(np.amin(data_wavelength_um))
