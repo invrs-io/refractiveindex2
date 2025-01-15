@@ -3,11 +3,12 @@
 Copyright (c) 2025 Martin F. Schubert
 """
 
-import yaml
 import unittest
-import numpy as np
 
+import numpy as np
+import yaml
 from parameterized import parameterized
+
 import refractiveindex2 as ri
 
 

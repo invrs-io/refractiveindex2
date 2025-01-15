@@ -30,6 +30,7 @@ tests = [
 dev = [
     "bump-my-version",
     "darglint",
+    "isort",
     "mypy",
     "pre-commit",
 ]

@@ -45,6 +45,9 @@ jobs:
             python -m pip install --upgrade pip
             pip install ".[dev]"
 
+      - name: isort
+        run: find . -name "*.py" | xargs isort --profile black --check-only
+
       - name: mypy type validation
         run: mypy src
 

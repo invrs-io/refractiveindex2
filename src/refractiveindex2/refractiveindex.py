@@ -3,17 +3,17 @@
 Copyright (c) 2025 Martin F. Schubert
 """
 
-import os
-import yaml
 import functools
+import os
 import pathlib
 import shutil
 import tempfile
 import zipfile
-from urllib import request
 from typing import Any, Callable, Dict, Sequence, Tuple
+from urllib import request
 
 import numpy as np
+import yaml
 
 Array = np.ndarray[Any, Any]
 
