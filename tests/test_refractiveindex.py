@@ -13,11 +13,11 @@ import refractiveindex2 as ri
 
 
 class RefractiveIndexMaterialTest(unittest.TestCase):
-    @parameterized.expand(list(ri._CATALOG.keys()))
+    @parameterized.expand(list(ri.refractiveindex._CATALOG.keys()))
     def test_can_load_material(self, shelf, book, page):
         ri.RefractiveIndexMaterial(shelf, book, page)
 
-    @parameterized.expand(list(ri._CATALOG.keys()))
+    @parameterized.expand(list(ri.refractiveindex._CATALOG.keys()))
     def test_can_compute_refractive_index(self, shelf, book, page):
         mat = ri.RefractiveIndexMaterial(shelf, book, page)
         self.assertFalse((mat.n_fn is None) and (mat.k_fn is None))
@@ -36,6 +36,22 @@ class RefractiveIndexMaterialTest(unittest.TestCase):
                 permittivity,
                 (refractive_index + 1j * extinction_coefficient) ** 2,
             )
+
+
+class NoDataExceptionTest(unittest.TestCase):
+    def test_no_refractive_index(self):
+        mat = ri.RefractiveIndexMaterial(shelf="main", book="H2O", page="Wang")
+        with self.assertRaisesRegex(
+            ri.NoRefractiveIndex, ".* has no refractive index data."
+        ):
+            mat.get_refractive_index(0.5)
+
+    def test_no_extinction_coefficient(self):
+        mat = ri.RefractiveIndexMaterial(shelf="main", book="Si3N4", page="Luke")
+        with self.assertRaisesRegex(
+            ri.NoExtinctionCoefficient, ".* has no extinction coefficient data."
+        ):
+            mat.get_extinction_coefficient(0.5)
 
 
 class RefractiveIndexValueTest(unittest.TestCase):
