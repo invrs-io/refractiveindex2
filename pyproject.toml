@@ -1,7 +1,7 @@
 [project]
 
 name = "refractiveindex2"
-version = "v0.0.2"
+version = "v0.0.3"
 description = "A python interface to the refractiveindex.info database."
 keywords = []
 readme = "README.md"
@@ -18,7 +18,9 @@ maintainers = [
 dependencies = [
     "numpy",
     "pyyaml",
+    "requests",
     "types-PyYAML",
+    "types-requests",
 ]
 
 [project.optional-dependencies]

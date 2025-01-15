@@ -47,6 +47,18 @@ You can find the proper “page” name by hovering your cursor on the link in t
 Or you can look up folders in this repository<br>
 https://github.com/polyanskiy/refractiveindex.info-database
 
+## Known issues
+For unknown reasons, download of the database can be slow on some systems. You can avoid this by manually downloading the zip file with the `SHA` hard-coded in the `refractiveindex.py` module, e.g.
+```
+https://github.com/polyanskiy/refractiveindex.info-database/archive/{SHA}.zip
+```
+which will be a file named
+```
+refractiveindex.info-database-{SHA}.zip
+```
+Then, manually add this file to the `src/refractiveindex2/database/{SHA}` directory, creating the directory if needed. This ensures that the automatic download of the database on first module import is avoided.
+
+
 ## Related projects
 
 - https://github.com/stillyslalom/RefractiveIndex.jl
