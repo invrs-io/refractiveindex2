@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml",
     "requests",
     "types-PyYAML",
+    "types-requests",
 ]
 
 [project.optional-dependencies]
