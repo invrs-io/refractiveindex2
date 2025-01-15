@@ -10,38 +10,47 @@ import shutil
 import tempfile
 import zipfile
 from typing import Any, Callable, Dict, Sequence, Tuple
-from urllib import request
 
 import numpy as np
+import requests
 import yaml
 
 Array = np.ndarray[Any, Any]
 
 
 # Commits: https://github.com/polyanskiy/refractiveindex.info-database/commits/master/
-_DATABASE_SHA = "2f975ebe617dd7f2b2db86a28a1d76910dd9bd1a"  # January 13, 2025
-_DATABASE_PATH = f"{pathlib.Path(__file__).resolve().parent}/database/{_DATABASE_SHA}"
-_DATABASE_URL = f"https://github.com/polyanskiy/refractiveindex.info-database/archive/{_DATABASE_SHA}.zip"
+_DATABASE_SHA = "2f975ebe617dd7f2b2db86a28a1d76910dd9bd1a"
+_ZIP_URL = f"https://github.com/polyanskiy/refractiveindex.info-database/archive/{_DATABASE_SHA}.zip"
+_BASE_PATH = f"{pathlib.Path(__file__).resolve().parent}/database/{_DATABASE_SHA}"
+_ZIP_PATH = f"{_BASE_PATH}/refractiveindex.info-database-{_DATABASE_SHA}.zip"
+_DATABASE_PATH = f"{_BASE_PATH}/database"
+
 
 # Keys to the database which are used across multiple functions.
 _TYPE = "type"  # The type of refractive index data, e.g. tabulated or formula.
 _DATA = "DATA"  # Data for refractive index or extinction coefficient.
 
 
-def _download_database(url: str, path: str) -> None:
-    """Download the database for the specified commit sha to the specified path."""
-    with tempfile.TemporaryDirectory() as tempdir:
-        zip_filename = os.path.join(tempdir, "database.zip")
-        request.urlretrieve(url, zip_filename)
-        with zipfile.ZipFile(zip_filename, "r") as file:
-            file.extractall(tempdir)
+def _download_database(url: str, output_path: str) -> None:
+    """Download the database archive to the specified output path."""
+    r = requests.get(url)
+    if not os.path.exists("/".join(output_path.split("/")[:-1])):
+        os.makedirs("/".join(output_path.split("/")[:-1]))
+    with open(output_path, "wb") as f:
+        f.write(r.content)
 
-        database_sha = path.split("/")[-1]
-        tmp_path = f"{tempdir}/refractiveindex.info-database-{database_sha}/database"
-        # Remove python files from the database.
-        os.remove(f"{tmp_path}/tools/n2explorer.py")
-        os.remove(f"{tmp_path}/tools/nkexplorer.py")
-        shutil.move(tmp_path, path)
+
+def _extract_database(zip_path: str, output_path: str) -> None:
+    """Extracts the zip archive to the specified path."""
+    with tempfile.TemporaryDirectory() as tempdir:
+        with zipfile.ZipFile(zip_path, "r") as file:
+            file.extractall(tempdir)
+        temp_database_path = f"{tempdir}/{zip_path.split('/')[-1][:-4]}/database"
+        shutil.move(f"{temp_database_path}/data", f"{output_path}/data")
+        shutil.move(f"{temp_database_path}/doc", f"{output_path}/doc")
+        shutil.move(
+            f"{temp_database_path}/catalog-nk.yml", f"{output_path}/catalog-nk.yml"
+        )
 
 
 def _parse_catalog(
@@ -79,8 +88,10 @@ def _parse_catalog(
 
 # On module import, the database is automatically downloaded and parsed.
 
+if not os.path.exists(_ZIP_PATH):
+    _download_database(url=_ZIP_URL, output_path=_ZIP_PATH)
 if not os.path.exists(_DATABASE_PATH):
-    _download_database(url=_DATABASE_URL, path=_DATABASE_PATH)
+    _extract_database(zip_path=_ZIP_PATH, output_path=_DATABASE_PATH)
 
 with open(f"{_DATABASE_PATH}/catalog-nk.yml", encoding="utf-8") as f:
     _CATALOG = _parse_catalog(
