@@ -25,6 +25,7 @@ _DATABASE_URL = f"https://github.com/polyanskiy/refractiveindex.info-database/ar
 
 # Keys to the database which are used across multiple functions.
 _TYPE = "type"  # The type of refractive index data, e.g. tabulated or formula.
+_DATA = "DATA"  # Data for refractive index or extinction coefficient.
 
 
 def _download_database(url: str, path: str) -> None:
@@ -76,7 +77,7 @@ def _parse_catalog(
     return parsed
 
 
-# On module import, the databse is automatically downloaded and parsed.
+# On module import, the database is automatically downloaded and parsed.
 
 if not os.path.exists(_DATABASE_PATH):
     _download_database(url=_DATABASE_URL, path=_DATABASE_PATH)
@@ -91,7 +92,8 @@ with open(f"{_DATABASE_PATH}/catalog-nk.yml", encoding="utf-8") as f:
 class RefractiveIndexMaterial:
     """Defines a material whose optical properties can be queried."""
 
-    def __init__(self, shelf: str, book: str, page: str, data_idx: int = 0) -> None:
+    def __init__(self, shelf: str, book: str, page: str) -> None:
+        """Initializes the `RefractiveIndexMaterial`."""
         self.key = (shelf, book, page)
         if self.key not in _CATALOG:
             raise ValueError(f"Material {self.key} not found in catalog.")
@@ -103,24 +105,28 @@ class RefractiveIndexMaterial:
                 self.wavelength_um_lower_bound,
                 self.wavelength_um_upper_bound,
             ),
-        ) = _load_nk_fns(self.filename, data_idx)
+        ) = _load_nk_fns(self.filename)
 
     def get_refractive_index(self, wavelength_um: Array) -> Array:
         """Return the refractive index at the given `wavelength_um`."""
         if self.n_fn is None:
-            raise ValueError(
-                f"Material {self.key} does not have refractive index data, or "
-                f"the parser for the required formula is not implemented."
-            )
+            raise ValueError(f"Material {self.key} has no refractive index data.")
+        _validate_wavelength_in_bounds(
+            wavelength_um=wavelength_um,
+            lower_bound=self.wavelength_um_lower_bound,
+            upper_bound=self.wavelength_um_upper_bound,
+        )
         return self.n_fn(wavelength_um)
 
     def get_extinction_coefficient(self, wavelength_um: Array) -> Array:
         """Return the extinction coefficient at the given `wavelength_um`."""
         if self.k_fn is None:
-            raise ValueError(
-                f"Material {self.key} does not have extinction coefficient data, or "
-                f"the parser for the required formula is not implemented. "
-            )
+            raise ValueError(f"Material {self.key} has no extinction coefficient data.")
+        _validate_wavelength_in_bounds(
+            wavelength_um=wavelength_um,
+            lower_bound=self.wavelength_um_lower_bound,
+            upper_bound=self.wavelength_um_upper_bound,
+        )
         return self.k_fn(wavelength_um)
 
     def get_epsilon(
@@ -135,8 +141,20 @@ class RefractiveIndexMaterial:
             return np.asarray((n - 1j * k) ** 2)
 
 
+def _validate_wavelength_in_bounds(
+    wavelength_um: Array, lower_bound: float, upper_bound: float
+) -> None:
+    """Checks that values of `wavelength` are in bounds."""
+    if np.any(wavelength_um < lower_bound) or np.any(wavelength_um > upper_bound):
+        raise ValueError(
+            f"Values of `wavelength_um` were out of bounds. Minimum and maximum "
+            f"values were {np.amin(wavelength_um)} and {np.amax(wavelength_um)}, "
+            f"respectively, but must lie in the range `{(lower_bound, upper_bound)}`."
+        )
+
+
 def _load_nk_fns(
-    path: str, data_idx: int
+    path: str,
 ) -> Tuple[
     Callable[[Array], Array] | None,
     Callable[[Array], Array] | None,
@@ -145,18 +163,44 @@ def _load_nk_fns(
     """Returns functions that compute refractive index and extinction coefficient."""
     with open(path, encoding="utf-8") as f:
         entry = yaml.safe_load(f)
-    data = entry["DATA"][data_idx]
-    data_type = data[_TYPE]
-    if data_type == "tabulated nk":
-        return _load_tabulated_nk_fns(data)
-    elif data_type == "tabulated n":
-        return _load_tabulated_n_fns(data)
-    elif data_type == "tabulated k":
-        return _load_tabulated_k_fns(data)
-    elif data_type.startswith("formula"):
-        return _load_formula_fns(data)
-    else:
-        raise ValueError(f"Unsupported data type: {data_type}")
+
+    # A material may have optical properties stored in two different sections, e.g.
+    # refractive index via the coefficients of some analytical expression, and the
+    # extinction coefficient by tabular data. Each section defines a wavelength bound,
+    # and these need not agree. We always use the wavelength bound defined by the
+    # first data section. Also, in some cases both a formula for refractive index
+    # and tabular data is given. Here, we use whichever is defined first.
+    n_fn = None
+    k_fn = None
+    bounds = None
+    for data in entry[_DATA]:
+        _n_fn = None
+        _k_fn = None
+        _bounds = None
+
+        if data[_TYPE] == "tabulated nk":
+            _n_fn, _k_fn, _bounds = _load_tabulated_nk_fns(data)
+        elif data[_TYPE] == "tabulated n":
+            _n_fn, _bounds = _load_tabulated_fn(data)
+        elif data[_TYPE] == "tabulated k":
+            _k_fn, _bounds = _load_tabulated_fn(data)
+        elif data[_TYPE].startswith("formula"):
+            _n_fn, _bounds = _load_formula_fn(data)
+        else:
+            raise ValueError(f"Unsupported data type: {data[0][_TYPE]}")
+
+        if n_fn is None:
+            n_fn = _n_fn
+        if k_fn is None:
+            k_fn = _k_fn
+        if bounds is None:
+            bounds = _bounds
+
+    wvl_lo: float
+    wvl_hi: float
+    assert len(bounds) == 2  # type: ignore[arg-type]
+    wvl_lo, wvl_hi = bounds  # type: ignore[misc]
+    return n_fn, k_fn, (wvl_lo, wvl_hi)
 
 
 # -----------------------------------------------------------------------------
@@ -169,61 +213,22 @@ def _load_tabulated_nk_fns(
 ) -> Tuple[Callable[[Array], Array], Callable[[Array], Array], Tuple[float, float]]:
     """Return functions for tabulated data including n and k."""
     data_wavelength_um, data_n, data_k = _parse_tabulated(data["data"])
-    n_fn = functools.partial(
-        _interp_wavelength,
-        wavelength_points=data_wavelength_um,
-        value_points=data_n,
-    )
-    k_fn = functools.partial(
-        _interp_wavelength,
-        wavelength_points=data_wavelength_um,
-        value_points=data_k,
-    )
+    n_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_n)
+    k_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_k)
     wvl_lo = float(np.amin(data_wavelength_um))
     wvl_hi = float(np.amax(data_wavelength_um))
     return n_fn, k_fn, (wvl_lo, wvl_hi)
 
 
-def _load_tabulated_n_fns(
+def _load_tabulated_fn(
     data: Dict[str, str],
-) -> Tuple[Callable[[Array], Array], None, Tuple[float, float]]:
-    """Return functions for tabulated data including n only."""
-    data_wavelength_um, data_n = _parse_tabulated(data["data"])
-    n_fn = functools.partial(
-        _interp_wavelength,
-        wavelength_points=data_wavelength_um,
-        value_points=data_n,
-    )
+) -> Tuple[Callable[[Array], Array], Tuple[float, float]]:
+    """Return functions for tabulated data including e.g. n or k only."""
+    data_wavelength_um, data_points = _parse_tabulated(data["data"])
+    data_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_points)
     wvl_lo = float(np.amin(data_wavelength_um))
     wvl_hi = float(np.amax(data_wavelength_um))
-    return n_fn, None, (wvl_lo, wvl_hi)
-
-
-def _load_tabulated_k_fns(
-    data: Dict[str, str],
-) -> Tuple[None, Callable[[Array], Array], Tuple[float, float]]:
-    """Return functions for tabulated data including k only."""
-    data_wavelength_um, data_k = _parse_tabulated(data["data"])
-    k_fn = functools.partial(
-        _interp_wavelength,
-        wavelength_points=data_wavelength_um,
-        value_points=data_k,
-    )
-    wvl_lo = float(np.amin(data_wavelength_um))
-    wvl_hi = float(np.amax(data_wavelength_um))
-    return None, k_fn, (wvl_lo, wvl_hi)
-
-
-def _interp_wavelength(
-    wavelength: Array, wavelength_points: Array, value_points: Array
-) -> Array:
-    """Interpolates for values of `wavelength` and checks out-of-bounds values."""
-    _validate_wavelength_in_bounds(
-        wavelength=wavelength,
-        lower_bound=float(np.amin(wavelength_points)),
-        upper_bound=float(np.amax(wavelength_points)),
-    )
-    return np.interp(x=wavelength, xp=wavelength_points, fp=value_points)
+    return data_fn, (wvl_lo, wvl_hi)
 
 
 def _parse_tabulated(data_str: str) -> Sequence[Array]:
@@ -232,39 +237,19 @@ def _parse_tabulated(data_str: str) -> Sequence[Array]:
     return tuple(np.asarray(f) for f in zip(*data))
 
 
-def _validate_wavelength_in_bounds(
-    wavelength: Array, lower_bound: float, upper_bound: float
-) -> None:
-    """Checks that values of `wavelength` are in bounds."""
-    if np.any(wavelength < lower_bound) or np.any(wavelength > upper_bound):
-        raise ValueError(
-            f"Values of `wavelength` were out of bounds. Minimum and maximum values "
-            f"were {np.amin(wavelength)} and {np.amax(wavelength)}, respectively, "
-            f"but values must lie in the range `{(lower_bound, upper_bound)}`."
-        )
-
-
 # -----------------------------------------------------------------------------
 # Functions for loading nk functions from formula coefficients.
 # -----------------------------------------------------------------------------
 
 
-def _load_formula_fns(
+def _load_formula_fn(
     data: Dict[str, str],
-) -> Tuple[Callable[[Array], Array] | None, None, Tuple[float, float]]:
+) -> Tuple[Callable[[Array], Array], Tuple[float, float]]:
     """Return functions that compute refractive index using formulas."""
     (wvl_lo, wvl_hi), coeffs = _parse_formula(data)
     formula_fn = _FORMULA_REFRACTIVE_INDEX_FNS[data[_TYPE]]
-
-    def n_fn(wavelength_um: Array) -> Array:
-        _validate_wavelength_in_bounds(
-            wavelength=wavelength_um,
-            lower_bound=wvl_lo,
-            upper_bound=wvl_hi,
-        )
-        return formula_fn(wavelength_um=wavelength_um, coeffs=coeffs)
-
-    return n_fn, None, (wvl_lo, wvl_hi)
+    n_fn = functools.partial(formula_fn, coeffs=coeffs)
+    return n_fn, (wvl_lo, wvl_hi)
 
 
 def _parse_formula(data: Dict[str, str]) -> Tuple[Tuple[float, float], Array]:
