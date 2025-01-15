@@ -25,10 +25,10 @@ wavelength_um = 0.6  # [microns]
 SiO.get_epsilon(wavelength_um=wavelength_um)
 # (3.8633404437869827 + 0.003931076923076923j)
 
-SiO.get_refractive_index(wavelength_um=wavelength_nm)
+SiO.get_refractive_index(wavelength_um=wavelength_um)
 # (1.96553846)
 
-SiO.get_extinction_coefficient(wavelength_um=wavelength_nm)
+SiO.get_extinction_coefficient(wavelength_um=wavelength_um)
 # (0.001)
 ```
 
