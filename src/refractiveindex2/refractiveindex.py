@@ -110,7 +110,9 @@ class RefractiveIndexMaterial:
     def get_refractive_index(self, wavelength_um: Array) -> Array:
         """Return the refractive index at the given `wavelength_um`."""
         if self.n_fn is None:
-            raise ValueError(f"Material {self.key} has no refractive index data.")
+            raise NoRefractiveIndex(
+                f"Material {self.key} has no refractive index data."
+            )
         _validate_wavelength_in_bounds(
             wavelength_um=wavelength_um,
             lower_bound=self.wavelength_um_lower_bound,
@@ -121,7 +123,9 @@ class RefractiveIndexMaterial:
     def get_extinction_coefficient(self, wavelength_um: Array) -> Array:
         """Return the extinction coefficient at the given `wavelength_um`."""
         if self.k_fn is None:
-            raise ValueError(f"Material {self.key} has no extinction coefficient data.")
+            raise NoExtinctionCoefficient(
+                f"Material {self.key} has no extinction coefficient data."
+            )
         _validate_wavelength_in_bounds(
             wavelength_um=wavelength_um,
             lower_bound=self.wavelength_um_lower_bound,
@@ -139,6 +143,14 @@ class RefractiveIndexMaterial:
             return np.asarray((n + 1j * k) ** 2)
         else:
             return np.asarray((n - 1j * k) ** 2)
+
+
+class NoRefractiveIndex(Exception):
+    pass
+
+
+class NoExtinctionCoefficient(Exception):
+    pass
 
 
 def _validate_wavelength_in_bounds(
