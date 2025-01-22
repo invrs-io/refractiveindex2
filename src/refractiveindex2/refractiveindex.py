@@ -236,6 +236,8 @@ def _load_tabulated_nk_fns(
 ) -> Tuple[Callable[[Array], Array], Callable[[Array], Array], Tuple[float, float]]:
     """Return functions for tabulated data including n and k."""
     data_wavelength_um, data_n, data_k = _parse_tabulated(data["data"])
+    n_fn: Callable[[Array], Array]
+    k_fn: Callable[[Array], Array]
     n_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_n)
     k_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_k)
     wvl_lo = float(np.amin(data_wavelength_um))
@@ -248,6 +250,7 @@ def _load_tabulated_fn(
 ) -> Tuple[Callable[[Array], Array], Tuple[float, float]]:
     """Return functions for tabulated data including e.g. n or k only."""
     data_wavelength_um, data_points = _parse_tabulated(data["data"])
+    data_fn: Callable[[Array], Array]
     data_fn = functools.partial(np.interp, xp=data_wavelength_um, fp=data_points)
     wvl_lo = float(np.amin(data_wavelength_um))
     wvl_hi = float(np.amax(data_wavelength_um))
