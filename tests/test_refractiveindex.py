@@ -12,12 +12,25 @@ from parameterized import parameterized
 import refractiveindex2 as ri
 
 
+def custom_name_func(testcase_func, param_num, param):
+    # Generate the custom test name from the test arguments.
+    del param_num
+    shelf, book, page = param[0]
+    return f"{testcase_func.__name__}_{shelf}_{book}_{page}"
+
+
 class RefractiveIndexMaterialTest(unittest.TestCase):
-    @parameterized.expand(list(ri.refractiveindex._CATALOG.keys()))
+    @parameterized.expand(
+        list(ri.refractiveindex._CATALOG.keys()),
+        name_func=custom_name_func,
+    )
     def test_can_load_material(self, shelf, book, page):
         ri.RefractiveIndexMaterial(shelf, book, page)
 
-    @parameterized.expand(list(ri.refractiveindex._CATALOG.keys()))
+    @parameterized.expand(
+        list(ri.refractiveindex._CATALOG.keys()),
+        name_func=custom_name_func,
+    )
     def test_can_compute_refractive_index(self, shelf, book, page):
         mat = ri.RefractiveIndexMaterial(shelf, book, page)
         self.assertFalse((mat.n_fn is None) and (mat.k_fn is None))
