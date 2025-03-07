@@ -19,7 +19,7 @@ Array = np.ndarray[Any, Any]
 
 
 # Commits: https://github.com/polyanskiy/refractiveindex.info-database/commits/master/
-_DATABASE_SHA = "2f975ebe617dd7f2b2db86a28a1d76910dd9bd1a"
+_DATABASE_SHA = "ddaffcc15c488a1e17846c239b28f04b63202097"  # March 6, 2025
 _ZIP_URL = f"https://github.com/polyanskiy/refractiveindex.info-database/archive/{_DATABASE_SHA}.zip"
 _BASE_PATH = f"{pathlib.Path(__file__).resolve().parent}/database/{_DATABASE_SHA}"
 _ZIP_PATH = f"{_BASE_PATH}/refractiveindex.info-database-{_DATABASE_SHA}.zip"
