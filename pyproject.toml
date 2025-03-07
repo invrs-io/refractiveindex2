@@ -1,7 +1,7 @@
 [project]
 
 name = "refractiveindex2"
-version = "v0.0.4"
+version = "v0.1.0"
 description = "A python interface to the refractiveindex.info database."
 keywords = []
 readme = "README.md"
