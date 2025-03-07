@@ -80,8 +80,11 @@ def _parse_catalog(
                 page_name = page[_page]
                 key = (shelf_name, book_name, page_name)
                 path = page[_data]
-                assert key not in parsed
-                parsed[key] = f"{path_prefix}/{path}"
+                full_path = f"{path_prefix}/{path}"
+                # Duplicate keys are acceptable, but should be consistent.
+                if key in parsed:
+                    assert parsed[key] == full_path
+                parsed[key] = full_path
 
     return parsed
 
