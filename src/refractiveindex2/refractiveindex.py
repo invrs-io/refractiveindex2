@@ -64,7 +64,7 @@ def _parse_catalog(
     _page = "PAGE"
     _data = "data"
 
-    parsed = {}
+    parsed: Dict[Tuple[str, str, str], str] = {}
     for shelf in catalog:
         if _shelf not in shelf:
             continue
