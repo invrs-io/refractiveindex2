@@ -1,6 +1,6 @@
 """refractiveindex2: A python interface to the refractiveindex.info database.
 
-Copyright (c) 2025 Martin F. Schubert
+Copyright (c) 2025 invrs.io LLC
 """
 
 import functools
