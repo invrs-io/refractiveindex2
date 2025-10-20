@@ -6,7 +6,7 @@ description = "A python interface to the refractiveindex.info database."
 keywords = []
 readme = "README.md"
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
+license = "MIT"
 
 authors = [
     {name = "Martin Schubert", email = "mfschubert@gmail.com"},
